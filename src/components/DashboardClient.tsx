@@ -218,7 +218,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
       sumWeightedRating += r.classRating * r.numberOfRatings;
       totalFeedbacks += r.numberOfRatings;
       
-      if (r.classRating < thresholdNum) {
+      if (r.classRating < thresholdNum && r.numberOfRatings > 0) {
         lowRatingCount++;
       }
     });
@@ -245,7 +245,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
       item.sumWeightedRating += r.classRating * r.numberOfRatings;
       item.totalFeedbacks += r.numberOfRatings;
       item.classCount++;
-      if (r.classRating < thresholdNum) {
+      if (r.classRating < thresholdNum && r.numberOfRatings > 0) {
         item.lowCount++;
       }
     });
@@ -271,7 +271,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
       item.sumWeightedRating += r.classRating * r.numberOfRatings;
       item.totalFeedbacks += r.numberOfRatings;
       item.classCount++;
-      if (r.classRating < thresholdNum) {
+      if (r.classRating < thresholdNum && r.numberOfRatings > 0) {
         item.lowCount++;
       }
     });
@@ -298,7 +298,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
       item.sumWeightedRating += r.classRating * r.numberOfRatings;
       item.totalFeedbacks += r.numberOfRatings;
       item.classCount++;
-      if (r.classRating < thresholdNum) {
+      if (r.classRating < thresholdNum && r.numberOfRatings > 0) {
         item.lowCount++;
       }
     });
@@ -377,7 +377,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     const classes = instructorClasses.map(c => {
       sumWeighted += c.classRating * c.numberOfRatings;
       totalFeedbacks += c.numberOfRatings;
-      if (c.classRating < thresholdNum) lowCount++;
+      if (c.classRating < thresholdNum && c.numberOfRatings > 0) lowCount++;
       return c;
     });
     
@@ -425,7 +425,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     const classes = moduleClasses.map(c => {
       sumWeighted += c.classRating * c.numberOfRatings;
       totalFeedbacks += c.numberOfRatings;
-      if (c.classRating < thresholdNum) lowCount++;
+      if (c.classRating < thresholdNum && c.numberOfRatings > 0) lowCount++;
       return c;
     });
     
@@ -473,7 +473,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     const classes = batchClasses.map(c => {
       sumWeighted += c.classRating * c.numberOfRatings;
       totalFeedbacks += c.numberOfRatings;
-      if (c.classRating < thresholdNum) lowCount++;
+      if (c.classRating < thresholdNum && c.numberOfRatings > 0) lowCount++;
       return c;
     });
     
@@ -809,7 +809,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
           <button onClick={() => { setActiveTab('modules'); setSortField('avgRating'); }} className={`${styles.tab} ${activeTab === 'modules' ? styles.activeTab : ''}`}>Module Analysis</button>
           <button onClick={() => { setActiveTab('instructors'); setSortField('avgRating'); }} className={`${styles.tab} ${activeTab === 'instructors' ? styles.activeTab : ''}`}>Instructor Analysis</button>
           <button onClick={() => { setActiveTab('batches'); setSortField('avgRating'); }} className={`${styles.tab} ${activeTab === 'batches' ? styles.activeTab : ''}`}>Batch Performance</button>
-          <button onClick={() => { setActiveTab('mentees'); setSortField('timestamp'); }} className={`${styles.tab} ${activeTab === 'mentees' ? styles.activeTab : ''}`}>Mentee Feedbacks ({filteredData.menteeRatings.length})</button>
+          <button onClick={() => { setActiveTab('mentees'); setSortField('timestamp'); }} className={`${styles.tab} ${activeTab === 'mentees' ? styles.activeTab : ''}`}>Feedback ({filteredData.menteeRatings.length})</button>
           <button onClick={() => setActiveTab('patterns')} className={`${styles.tab} ${activeTab === 'patterns' ? styles.activeTab : ''}`} style={{ position: 'relative' }}>
             🔍 Patterns &amp; Insights
             {patterns.classStreaks.some(s => s.currentStreak >= 2) && (
@@ -1220,9 +1220,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                       <th>Class Type</th>
                       <th>Lesson Rating</th>
                       <th>Class Rating</th>
-                      <th>Low Rating Label</th>
-                      <th>Feedback Summary</th>
-                      <th>Suggestion</th>
+                      <th>Feedback</th>
                       <th>Flags</th>
                     </tr>
                   </thead>
@@ -1262,22 +1260,27 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>★</span>
                             </div>
                           </td>
-                          <td>
-                            {mr.lowRatingLabelOthers ? (
-                              <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>
-                                {mr.lowRatingLabelOthers}
-                              </span>
-                            ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
-                          </td>
-                          <td style={{ maxWidth: '220px', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                            {mr.feedbackSummary ? (
-                              <div style={{ fontStyle: 'italic', color: mr.menteeLessonRating <= 3 ? 'var(--danger)' : 'inherit' }}>
-                                {mr.feedbackSummary}
-                              </div>
-                            ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
-                          </td>
-                          <td style={{ maxWidth: '180px', fontSize: '0.8rem' }}>
-                            {mr.suggestion || <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                          <td style={{ maxWidth: '400px', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {mr.lowRatingLabelOthers && (
+                                <div>
+                                  <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Reason:</span> {mr.lowRatingLabelOthers}
+                                </div>
+                              )}
+                              {mr.suggestion && (
+                                <div>
+                                  <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Suggestion:</span> {mr.suggestion}
+                                </div>
+                              )}
+                              {mr.feedbackSummary && !mr.lowRatingLabelOthers && !mr.suggestion && (
+                                <div style={{ fontStyle: 'italic' }}>
+                                  {mr.feedbackSummary}
+                                </div>
+                              )}
+                              {!mr.lowRatingLabelOthers && !mr.suggestion && !mr.feedbackSummary && (
+                                <span style={{ color: 'var(--text-muted)' }}>-</span>
+                              )}
+                            </div>
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

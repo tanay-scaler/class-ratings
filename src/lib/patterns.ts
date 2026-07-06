@@ -121,7 +121,7 @@ function computeClassStreaks(classRatings: ClassRating[], threshold: number): Cl
     let lastRating = 0;
 
     for (const c of sorted) {
-      const isLow = c.classRating < threshold;
+      const isLow = c.classRating < threshold && c.numberOfRatings > 0;
       if (isLow) {
         tempStreak++;
         totalLow++;
@@ -136,7 +136,7 @@ function computeClassStreaks(classRatings: ClassRating[], threshold: number): Cl
     // Current streak = streak ending at the last class
     let cs = 0;
     for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].classRating < threshold) cs++;
+      if (sorted[i].classRating < threshold && sorted[i].numberOfRatings > 0) cs++;
       else break;
     }
     currentStreak = cs;
@@ -148,7 +148,7 @@ function computeClassStreaks(classRatings: ClassRating[], threshold: number): Cl
       rating: c.classRating,
       topic: c.classTopic,
       instructorName: c.instructorName,
-      isLow: c.classRating < threshold,
+      isLow: c.classRating < threshold && c.numberOfRatings > 0,
     })).reverse();
 
     results.push({
@@ -209,7 +209,7 @@ function computeInstructorPatterns(
     let totalRatings = 0;
 
     for (const c of sorted) {
-      const isLow = c.classRating < threshold;
+      const isLow = c.classRating < threshold && c.numberOfRatings > 0;
       sumWeighted += c.classRating * c.numberOfRatings;
       totalRatings += c.numberOfRatings;
       if (isLow) { tempStreak++; totalLow++; } else { tempStreak = 0; }
@@ -218,7 +218,7 @@ function computeInstructorPatterns(
 
     let cs = 0;
     for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].classRating < threshold) cs++; else break;
+      if (sorted[i].classRating < threshold && sorted[i].numberOfRatings > 0) cs++; else break;
     }
 
     const mentees = menteeByInstructor.get(instructor) || [];
@@ -239,8 +239,8 @@ function computeInstructorPatterns(
       .slice(0, 5)
       .map(([reason, count]) => ({ reason, count }));
 
-    const affectedModules = [...new Set(classes.filter(c => c.classRating < threshold).map(c => c.moduleName))];
-    const affectedBatches = [...new Set(classes.filter(c => c.classRating < threshold).map(c => c.sbNames))];
+    const affectedModules = [...new Set(classes.filter(c => c.classRating < threshold && c.numberOfRatings > 0).map(c => c.moduleName))];
+    const affectedBatches = [...new Set(classes.filter(c => c.classRating < threshold && c.numberOfRatings > 0).map(c => c.sbNames))];
 
     results.push({
       instructorName: instructor,
@@ -286,14 +286,14 @@ function computeModulePatterns(classRatings: ClassRating[], threshold: number): 
     for (const c of classes) {
       sumWeighted += c.classRating * c.numberOfRatings;
       totalRatings += c.numberOfRatings;
-      if (c.classRating < threshold) lowCount++;
+      if (c.classRating < threshold && c.numberOfRatings > 0) lowCount++;
 
       if (!instMap.has(c.instructorName)) instMap.set(c.instructorName, { sum: 0, ratings: 0, low: 0, count: 0 });
       const inst = instMap.get(c.instructorName)!;
       inst.sum += c.classRating * c.numberOfRatings;
       inst.ratings += c.numberOfRatings;
       inst.count++;
-      if (c.classRating < threshold) inst.low++;
+      if (c.classRating < threshold && c.numberOfRatings > 0) inst.low++;
 
       if (!batchMap.has(c.sbNames)) batchMap.set(c.sbNames, { sum: 0, ratings: 0, count: 0 });
       const batch = batchMap.get(c.sbNames)!;
@@ -428,7 +428,7 @@ function computeCrossSections(classRatings: ClassRating[], threshold: number): C
     for (const c of classes) {
       sumWeighted += c.classRating * c.numberOfRatings;
       totalRatings += c.numberOfRatings;
-      if (c.classRating < threshold) lowCount++;
+      if (c.classRating < threshold && c.numberOfRatings > 0) lowCount++;
     }
     const avgRating = totalRatings > 0 ? Math.round((sumWeighted / totalRatings) * 100) / 100 : 0;
     const sample = classes[0];

@@ -139,7 +139,10 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
           if (mr.suggestion) {
             parts.push(`Suggestion: ${mr.suggestion}`);
           }
-          return parts.join(' ').trim();
+          if (mr.feedbackSummary && parts.length === 0) {
+            parts.push(mr.feedbackSummary);
+          }
+          return parts.join(' | ').trim();
         })
         .filter((t: string) => t.length > 0);
 

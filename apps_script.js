@@ -41,11 +41,11 @@ function doGet(e) {
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 2. Fetch each sheet
-    const classRatingsSheet = spreadsheet.getSheetByName("Class Ratings");
-    const learnerSplitsSheet = spreadsheet.getSheetByName("Learner Level Data");
-    const menteeRatingsSheet = spreadsheet.getSheetByName("Low Rated Session Learner Level") || spreadsheet.getSheetByName("Learner Level Data");
-    const usersSheet = spreadsheet.getSheetByName("Users");
+    // 2. Fetch each sheet case-insensitively
+    const classRatingsSheet = getSheetByNameCaseInsensitive(spreadsheet, "Class Ratings");
+    const learnerSplitsSheet = getSheetByNameCaseInsensitive(spreadsheet, "Learner Level Data");
+    const menteeRatingsSheet = getSheetByNameCaseInsensitive(spreadsheet, "Low Rated Session Learner Level") || getSheetByNameCaseInsensitive(spreadsheet, "Learner Level Data");
+    const usersSheet = getSheetByNameCaseInsensitive(spreadsheet, "Users");
 
     const classRatingsData   = classRatingsSheet   ? getSheetData(classRatingsSheet)   : [];
     const learnerSplitsData  = learnerSplitsSheet  ? getSheetData(learnerSplitsSheet)  : [];
@@ -141,4 +141,20 @@ function normalizeHeader(header) {
     .replace(/[^a-z0-9\s_-]/g, "")          // strip special chars
     .replace(/[\s_-]+(.)/g, function(_, c) { return c.toUpperCase(); }) // camelCase
     .replace(/^(.)/, function(c) { return c.toLowerCase(); });           // first char lower
+}
+
+/**
+ * Find a sheet by name case-insensitively, ignoring spaces, hyphens, and underscores.
+ */
+function getSheetByNameCaseInsensitive(spreadsheet, targetName) {
+  const sheets = spreadsheet.getSheets();
+  const targetLower = targetName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (var i = 0; i < sheets.length; i++) {
+    const sheetName = sheets[i].getName();
+    const sheetLower = sheetName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (sheetLower === targetLower) {
+      return sheets[i];
+    }
+  }
+  return null;
 }
