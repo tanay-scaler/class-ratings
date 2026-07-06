@@ -1682,6 +1682,12 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                         {c.classRating.toFixed(2)} ★
                       </span>
                     </div>
+                    {c.ratingSplit && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span>Distribution:</span>
+                        <span style={{ fontFamily: 'monospace', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{c.ratingSplit}</span>
+                      </div>
+                    )}
                     {c.feedback ? (
                       <div style={{ fontSize: '0.8rem', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid var(--border-color)' }}>
                         &quot;{c.feedback}&quot;

@@ -13,6 +13,7 @@ export interface ClassRating {
   feedback: string;         // aggregated from learner-level data at runtime
   reportLink?: string;      // Typeform report link for the class
   sbatGroupId: string;      // group identifier
+  ratingSplit?: string;
 }
 
 export interface MenteeRating {

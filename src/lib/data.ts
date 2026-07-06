@@ -145,24 +145,24 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
 
       // Build feedback purely from matched learner-level data
       // (cr.feedback is a typeform report link, not usable text)
-      let combinedFeedback = comments.join('\n');
-      if (!combinedFeedback) {
-        const split = splitsMap.get(sbatGroupId);
-        if (split) {
-          const { n1, n2, n3, n4, n5 } = split;
-          if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
-            combinedFeedback = `Rating Split — 1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
-          }
-        } else if (matchingMentees.length > 0) {
-          const mm = matchingMentees[0];
-          const n1 = mm.numRatings1 || 0;
-          const n2 = mm.numRatings2 || 0;
-          const n3 = mm.numRatings3 || 0;
-          const n4 = mm.numRatings4 || 0;
-          const n5 = mm.numRatings5 || 0;
-          if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
-            combinedFeedback = `Rating Split — 1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
-          }
+      const combinedFeedback = comments.join('\n');
+
+      let ratingSplitSummary = '';
+      const split = splitsMap.get(sbatGroupId);
+      if (split) {
+        const { n1, n2, n3, n4, n5 } = split;
+        if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
+          ratingSplitSummary = `1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
+        }
+      } else if (matchingMentees.length > 0) {
+        const mm = matchingMentees[0];
+        const n1 = mm.numRatings1 || 0;
+        const n2 = mm.numRatings2 || 0;
+        const n3 = mm.numRatings3 || 0;
+        const n4 = mm.numRatings4 || 0;
+        const n5 = mm.numRatings5 || 0;
+        if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
+          ratingSplitSummary = `1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
         }
       }
 
@@ -178,7 +178,8 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
         sbNames: String(cr.sbNames || 'Unknown'),
         feedback: combinedFeedback,
         reportLink: cleanString(cr.feedback),
-        sbatGroupId
+        sbatGroupId,
+        ratingSplit: ratingSplitSummary
       };
     });
 
