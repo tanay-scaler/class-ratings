@@ -1264,7 +1264,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                             <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{s.moduleName}</td>
                             <td style={{ textAlign: 'center' }}>
                               {s.currentStreak >= 2 ? (
-                                <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '4px 10px' }}>🔥 {s.currentStreak}</span>
+                                <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '4px 10px' }}>{s.currentStreak}</span>
                               ) : s.currentStreak === 1 ? (
                                 <span className="badge badge-warning" style={{ fontSize: '0.85rem' }}>⚠️ 1</span>
                               ) : (
@@ -1333,7 +1333,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                               </span>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {p.currentStreak >= 2 ? <span className="badge badge-danger">🔥 {p.currentStreak}</span>
+                              {p.currentStreak >= 2 ? <span className="badge badge-danger">{p.currentStreak}</span>
                                 : p.currentStreak === 1 ? <span className="badge badge-warning">⚠️ 1</span>
                                 : <span style={{ color: 'var(--success)' }}>✓ 0</span>}
                             </td>
@@ -1529,7 +1529,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {lp.maxConsecutiveLow >= 3
-                                ? <span className="badge badge-danger">🔥 {lp.maxConsecutiveLow}</span>
+                                ? <span className="badge badge-danger">{lp.maxConsecutiveLow}</span>
                                 : lp.maxConsecutiveLow >= 2
                                 ? <span className="badge badge-warning">⚠️ {lp.maxConsecutiveLow}</span>
                                 : <span>{lp.maxConsecutiveLow}</span>}
