@@ -62,6 +62,7 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
     // Ensure basic structures are present
     const classRatings = Array.isArray(data.classRatings) ? data.classRatings : [];
     const menteeRatings = Array.isArray(data.menteeRatings) ? data.menteeRatings : [];
+    const learnerSplits = Array.isArray(data.learnerSplits) ? data.learnerSplits : [];
     const authorizedUsers = Array.isArray(data.authorizedUsers) ? data.authorizedUsers : [];
 
     // Parse ratings data to correct types
@@ -85,8 +86,27 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
       learnersRatedLowAgainCount: parseInt(String(mr.learnersRatedLowAgainCount)) || 0,
       instructorChangeFlag: mr.instructorChangeFlag === true || mr.instructorChangeFlag === 'TRUE',
       suggestion: cleanString(mr.suggestion),
-      lowRatingLabelOthers: cleanString(mr.lowRatingLabelOthers)
+      lowRatingLabelOthers: cleanString(mr.lowRatingLabelOthers),
+      numRatings1: parseInt(String(mr.numRatings1 || mr.num_ratings_1 || '0')) || 0,
+      numRatings2: parseInt(String(mr.numRatings2 || mr.num_ratings_2 || '0')) || 0,
+      numRatings3: parseInt(String(mr.numRatings3 || mr.num_ratings_3 || '0')) || 0,
+      numRatings4: parseInt(String(mr.numRatings4 || mr.num_ratings_4 || '0')) || 0,
+      numRatings5: parseInt(String(mr.numRatings5 || mr.num_ratings_5 || '0')) || 0
     }));
+
+    // Group rating splits by the class primary key
+    const splitsMap = new Map<string, { n1: number; n2: number; n3: number; n4: number; n5: number }>();
+    for (const split of learnerSplits) {
+      const key = String(split.sbatGroupId || '').trim();
+      if (!key) continue;
+      splitsMap.set(key, {
+        n1: parseInt(String(split.numRatings1 || split.num_ratings_1 || '0')) || 0,
+        n2: parseInt(String(split.numRatings2 || split.num_ratings_2 || '0')) || 0,
+        n3: parseInt(String(split.numRatings3 || split.num_ratings_3 || '0')) || 0,
+        n4: parseInt(String(split.numRatings4 || split.num_ratings_4 || '0')) || 0,
+        n5: parseInt(String(split.numRatings5 || split.num_ratings_5 || '0')) || 0,
+      });
+    }
 
     // 1. Group mentee ratings by the class primary key.
     const menteeMap = new Map<string, MenteeRating[]>();
@@ -125,7 +145,26 @@ export async function fetchDashboardData(forceFresh: boolean = false): Promise<D
 
       // Build feedback purely from matched learner-level data
       // (cr.feedback is a typeform report link, not usable text)
-      const combinedFeedback = comments.join('\n');
+      let combinedFeedback = comments.join('\n');
+      if (!combinedFeedback) {
+        const split = splitsMap.get(sbatGroupId);
+        if (split) {
+          const { n1, n2, n3, n4, n5 } = split;
+          if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
+            combinedFeedback = `Rating Split — 1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
+          }
+        } else if (matchingMentees.length > 0) {
+          const mm = matchingMentees[0];
+          const n1 = mm.numRatings1 || 0;
+          const n2 = mm.numRatings2 || 0;
+          const n3 = mm.numRatings3 || 0;
+          const n4 = mm.numRatings4 || 0;
+          const n5 = mm.numRatings5 || 0;
+          if (n1 > 0 || n2 > 0 || n3 > 0 || n4 > 0 || n5 > 0) {
+            combinedFeedback = `Rating Split — 1★: ${n1} | 2★: ${n2} | 3★: ${n3} | 4★: ${n4} | 5★: ${n5}`;
+          }
+        }
+      }
 
       return {
         program: String(cr.program || 'Unknown'),

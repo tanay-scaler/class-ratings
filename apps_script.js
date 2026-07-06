@@ -43,15 +43,18 @@ function doGet(e) {
 
     // 2. Fetch each sheet
     const classRatingsSheet = spreadsheet.getSheetByName("Class Ratings");
-    const menteeRatingsSheet = spreadsheet.getSheetByName("Learner Level Data");
+    const learnerSplitsSheet = spreadsheet.getSheetByName("Learner Level Data");
+    const menteeRatingsSheet = spreadsheet.getSheetByName("Low Rated Session Learner Level") || spreadsheet.getSheetByName("Learner Level Data");
     const usersSheet = spreadsheet.getSheetByName("Users");
 
     const classRatingsData   = classRatingsSheet   ? getSheetData(classRatingsSheet)   : [];
+    const learnerSplitsData  = learnerSplitsSheet  ? getSheetData(learnerSplitsSheet)  : [];
     const menteeRatingsData  = menteeRatingsSheet  ? getSheetData(menteeRatingsSheet)  : [];
     const usersData          = usersSheet          ? getSheetData(usersSheet)          : [];
 
     return jsonResponse({
       classRatings:     classRatingsData,
+      learnerSplits:    learnerSplitsData,
       menteeRatings:    menteeRatingsData,
       authorizedUsers:  usersData,
       timestamp:        new Date().toISOString()

@@ -18,7 +18,7 @@ interface DashboardClientProps {
 }
 
 type TabType = 'overview' | 'modules' | 'instructors' | 'batches' | 'mentees' | 'comments' | 'patterns';
-type DateRangeType = '7d' | '15d' | '30d' | 'all';
+type DateRangeType = '7d' | '15d' | '30d' | 'all' | 'custom-single' | 'custom-range';
 type RatingThresholdType = 'all' | '4.6' | '4.4' | '4.2';
 type OptionalClassFilterType = 'all' | 'regular' | 'optional';
 type InstructorChangeFilterType = 'all' | 'changed' | 'not_changed';
@@ -37,6 +37,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
   const [optionalClassFilter, setOptionalClassFilter] = useState<OptionalClassFilterType>('all');
   const [instructorChangeFilter, setInstructorChangeFilter] = useState<InstructorChangeFilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [customSingleDate, setCustomSingleDate] = useState<string>('');
 
   // --- Table Sorting States ---
   const [sortField, setSortField] = useState<string>('avgRating');
@@ -56,6 +59,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     setOptionalClassFilter('all');
     setInstructorChangeFilter('all');
     setSearchQuery('');
+    setCustomStartDate('');
+    setCustomEndDate('');
+    setCustomSingleDate('');
   };
 
   const classFlagsByGroupId = useMemo(() => {
@@ -101,8 +107,19 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
 
   // --- Date Filtering Helper ---
   const isWithinDateRange = useCallback((dateStr: string) => {
-    if (dateRange === 'all') return true;
     if (!dateStr) return false;
+
+    if (dateRange === 'custom-single') {
+      return !customSingleDate || dateStr === customSingleDate;
+    }
+    
+    if (dateRange === 'custom-range') {
+      if (customStartDate && dateStr < customStartDate) return false;
+      if (customEndDate && dateStr > customEndDate) return false;
+      return true;
+    }
+
+    if (dateRange === 'all') return true;
     
     const date = new Date(dateStr);
     const now = new Date();
@@ -113,7 +130,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     if (dateRange === '15d') return diffDays <= 15;
     if (dateRange === '30d') return diffDays <= 30;
     return true;
-  }, [dateRange]);
+  }, [dateRange, customSingleDate, customStartDate, customEndDate]);
 
   // --- Filter Ratings ---
   const filteredData = useMemo(() => {
@@ -550,8 +567,48 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                     <option value="15d">Last 15 Days</option>
                     <option value="30d">Last 30 Days (Default)</option>
                     <option value="all">All Time</option>
+                    <option value="custom-single">Single Date</option>
+                    <option value="custom-range">Custom Date Range</option>
                   </select>
                 </div>
+
+                {dateRange === 'custom-single' && (
+                  <div className={styles.selectWrapper}>
+                    <label className={styles.selectLabel}>Select Date</label>
+                    <input
+                      type="date"
+                      value={customSingleDate}
+                      onChange={e => setCustomSingleDate(e.target.value)}
+                      className={styles.select}
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                )}
+
+                {dateRange === 'custom-range' && (
+                  <>
+                    <div className={styles.selectWrapper}>
+                      <label className={styles.selectLabel}>Start Date</label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className={styles.select}
+                        style={{ colorScheme: 'dark' }}
+                      />
+                    </div>
+                    <div className={styles.selectWrapper}>
+                      <label className={styles.selectLabel}>End Date</label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className={styles.select}
+                        style={{ colorScheme: 'dark' }}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className={styles.selectWrapper}>
                   <label className={styles.selectLabel}>Low Rating Alert</label>
@@ -1266,9 +1323,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                               {s.currentStreak >= 2 ? (
                                 <span className="badge badge-danger" style={{ fontSize: '0.85rem', padding: '4px 10px' }}>{s.currentStreak}</span>
                               ) : s.currentStreak === 1 ? (
-                                <span className="badge badge-warning" style={{ fontSize: '0.85rem' }}>⚠️ 1</span>
+                                <span className="badge badge-warning" style={{ fontSize: '0.85rem' }}>1</span>
                               ) : (
-                                <span style={{ color: 'var(--success)' }}>✓ 0</span>
+                                <span style={{ color: 'var(--success)' }}>0</span>
                               )}
                             </td>
                             <td style={{ textAlign: 'center', fontWeight: s.maxStreak >= 3 ? 700 : 400, color: s.maxStreak >= 3 ? 'var(--danger)' : 'inherit' }}>{s.maxStreak}</td>
@@ -1334,8 +1391,8 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {p.currentStreak >= 2 ? <span className="badge badge-danger">{p.currentStreak}</span>
-                                : p.currentStreak === 1 ? <span className="badge badge-warning">⚠️ 1</span>
-                                : <span style={{ color: 'var(--success)' }}>✓ 0</span>}
+                                : p.currentStreak === 1 ? <span className="badge badge-warning">1</span>
+                                : <span style={{ color: 'var(--success)' }}>0</span>}
                             </td>
                             <td style={{ textAlign: 'center' }}>{p.totalLowClasses} / {p.totalClasses}</td>
                             <td style={{ fontSize: '0.78rem' }}>
@@ -1482,7 +1539,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                             <td>
                               {cs.isAlarm
                                 ? <span className="badge badge-danger" style={{ fontSize: '0.72rem' }}>🚨 All Low</span>
-                                : <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>⚠️ Partial</span>}
+                                : <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>Partial</span>}
                             </td>
                           </tr>
                         ))
@@ -1531,12 +1588,12 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                               {lp.maxConsecutiveLow >= 3
                                 ? <span className="badge badge-danger">{lp.maxConsecutiveLow}</span>
                                 : lp.maxConsecutiveLow >= 2
-                                ? <span className="badge badge-warning">⚠️ {lp.maxConsecutiveLow}</span>
+                                ? <span className="badge badge-warning">{lp.maxConsecutiveLow}</span>
                                 : <span>{lp.maxConsecutiveLow}</span>}
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {lp.instructorChangeFlagged
-                                ? <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>⚑ Yes</span>
+                                ? <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Yes</span>
                                 : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                             </td>
                             <td style={{ fontSize: '0.78rem' }}>

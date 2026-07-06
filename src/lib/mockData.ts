@@ -36,6 +36,11 @@ export interface MenteeRating {
   instructorChangeFlag: boolean;
   suggestion: string;
   lowRatingLabelOthers: string;
+  numRatings1?: number;
+  numRatings2?: number;
+  numRatings3?: number;
+  numRatings4?: number;
+  numRatings5?: number;
 }
 
 export interface AuthorizedUser {
