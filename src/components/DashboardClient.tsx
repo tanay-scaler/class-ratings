@@ -17,7 +17,7 @@ interface DashboardClientProps {
   };
 }
 
-type TabType = 'overview' | 'modules' | 'instructors' | 'batches' | 'mentees' | 'comments' | 'patterns';
+type TabType = 'overview' | 'modules' | 'instructors' | 'batches' | 'mentees' | 'patterns';
 type DateRangeType = '7d' | '15d' | '30d' | 'all' | 'custom-single' | 'custom-range';
 type RatingThresholdType = 'all' | '4.6' | '4.4' | '4.2';
 type OptionalClassFilterType = 'all' | 'regular' | 'optional';
@@ -45,8 +45,10 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
   const [sortField, setSortField] = useState<string>('avgRating');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default to descending for ratings
 
-  // --- Instructor Modal Detail State ---
+  // --- Instructor, Module, and Batch Modal Detail States ---
   const [selectedInstructorDetail, setSelectedInstructorDetail] = useState<string | null>(null);
+  const [selectedModuleDetail, setSelectedModuleDetail] = useState<string | null>(null);
+  const [selectedBatchDetail, setSelectedBatchDetail] = useState<string | null>(null);
 
   // --- Reset Filters ---
   const handleResetFilters = () => {
@@ -58,6 +60,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     setRatingThreshold('4.6');
     setOptionalClassFilter('all');
     setInstructorChangeFilter('all');
+    setSelectedInstructorDetail(null);
+    setSelectedModuleDetail(null);
+    setSelectedBatchDetail(null);
     setSearchQuery('');
     setCustomStartDate('');
     setCustomEndDate('');
@@ -407,25 +412,103 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
     };
   }, [selectedInstructorDetail, filteredData.classRatings, thresholdNum]);
 
-  // Ratings threshold list filtered for comments tab
-  const commentsList = useMemo(() => {
-    const ratings = filteredData.classRatings;
-    return ratings
-      .filter(r => r.classRating < thresholdNum && (r.feedback.trim() !== '' || r.reportLink))
-      .map(r => ({
-        type: 'Class',
-        date: r.classDate,
-        batchSet: r.program,
-        batch: r.sbNames,
-        module: r.moduleName,
-        instructor: r.instructorName,
-        topic: r.classTopic,
-        rating: r.classRating,
-        comment: r.feedback,
-        reportLink: r.reportLink,
-        meta: `Feedbacks: ${r.numberOfRatings}`
-      }));
-  }, [filteredData.classRatings, thresholdNum]);
+  // --- Details for Module Popup Modal ---
+  const selectedModuleInfo = useMemo(() => {
+    if (!selectedModuleDetail) return null;
+    
+    const moduleClasses = filteredData.classRatings.filter(r => r.moduleName === selectedModuleDetail);
+    
+    let sumWeighted = 0;
+    let totalFeedbacks = 0;
+    let lowCount = 0;
+    
+    const classes = moduleClasses.map(c => {
+      sumWeighted += c.classRating * c.numberOfRatings;
+      totalFeedbacks += c.numberOfRatings;
+      if (c.classRating < thresholdNum) lowCount++;
+      return c;
+    });
+    
+    const avgRating = totalFeedbacks > 0 ? sumWeighted / totalFeedbacks : 0;
+    
+    classes.sort((a, b) => new Date(b.classDate).getTime() - new Date(a.classDate).getTime());
+
+    // Generate trend data
+    const dailyMap: Record<string, { sumWeighted: number; feedbacks: number }> = {};
+    classes.forEach(c => {
+      const day = c.classDate;
+      if (!day) return;
+      if (!dailyMap[day]) dailyMap[day] = { sumWeighted: 0, feedbacks: 0 };
+      dailyMap[day].sumWeighted += c.classRating * c.numberOfRatings;
+      dailyMap[day].feedbacks += c.numberOfRatings;
+    });
+    const trend = Object.entries(dailyMap)
+      .map(([date, d]) => ({
+        label: date,
+        value: d.feedbacks > 0 ? d.sumWeighted / d.feedbacks : 0
+      }))
+      .sort((a, b) => new Date(a.label).getTime() - new Date(b.label).getTime());
+
+    return {
+      name: selectedModuleDetail,
+      avgRating: Math.round(avgRating * 100) / 100,
+      totalFeedbacks,
+      lowCount,
+      classCount: classes.length,
+      classes,
+      trend
+    };
+  }, [selectedModuleDetail, filteredData.classRatings, thresholdNum]);
+
+  // --- Details for Batch Popup Modal ---
+  const selectedBatchInfo = useMemo(() => {
+    if (!selectedBatchDetail) return null;
+    
+    const batchClasses = filteredData.classRatings.filter(r => r.sbNames === selectedBatchDetail);
+    
+    let sumWeighted = 0;
+    let totalFeedbacks = 0;
+    let lowCount = 0;
+    
+    const classes = batchClasses.map(c => {
+      sumWeighted += c.classRating * c.numberOfRatings;
+      totalFeedbacks += c.numberOfRatings;
+      if (c.classRating < thresholdNum) lowCount++;
+      return c;
+    });
+    
+    const avgRating = totalFeedbacks > 0 ? sumWeighted / totalFeedbacks : 0;
+    
+    classes.sort((a, b) => new Date(b.classDate).getTime() - new Date(a.classDate).getTime());
+
+    // Generate trend data
+    const dailyMap: Record<string, { sumWeighted: number; feedbacks: number }> = {};
+    classes.forEach(c => {
+      const day = c.classDate;
+      if (!day) return;
+      if (!dailyMap[day]) dailyMap[day] = { sumWeighted: 0, feedbacks: 0 };
+      dailyMap[day].sumWeighted += c.classRating * c.numberOfRatings;
+      dailyMap[day].feedbacks += c.numberOfRatings;
+    });
+    const trend = Object.entries(dailyMap)
+      .map(([date, d]) => ({
+        label: date,
+        value: d.feedbacks > 0 ? d.sumWeighted / d.feedbacks : 0
+      }))
+      .sort((a, b) => new Date(a.label).getTime() - new Date(b.label).getTime());
+
+    return {
+      name: selectedBatchDetail,
+      avgRating: Math.round(avgRating * 100) / 100,
+      totalFeedbacks,
+      lowCount,
+      classCount: classes.length,
+      classes,
+      trend
+    };
+  }, [selectedBatchDetail, filteredData.classRatings, thresholdNum]);
+
+
 
   // --- Compute Patterns & Insights ---
   const patterns = useMemo(() => {
@@ -727,7 +810,6 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
           <button onClick={() => { setActiveTab('instructors'); setSortField('avgRating'); }} className={`${styles.tab} ${activeTab === 'instructors' ? styles.activeTab : ''}`}>Instructor Analysis</button>
           <button onClick={() => { setActiveTab('batches'); setSortField('avgRating'); }} className={`${styles.tab} ${activeTab === 'batches' ? styles.activeTab : ''}`}>Batch Performance</button>
           <button onClick={() => { setActiveTab('mentees'); setSortField('timestamp'); }} className={`${styles.tab} ${activeTab === 'mentees' ? styles.activeTab : ''}`}>Mentee Feedbacks ({filteredData.menteeRatings.length})</button>
-          <button onClick={() => { setActiveTab('comments'); setSortField('date'); }} className={`${styles.tab} ${activeTab === 'comments' ? styles.activeTab : ''}`}>Comments Explorer ({commentsList.length})</button>
           <button onClick={() => setActiveTab('patterns')} className={`${styles.tab} ${activeTab === 'patterns' ? styles.activeTab : ''}`} style={{ position: 'relative' }}>
             🔍 Patterns &amp; Insights
             {patterns.classStreaks.some(s => s.currentStreak >= 2) && (
@@ -838,9 +920,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                   </div>
                   <div className={styles.overviewIssueList}>
                     {overviewInstructorIssues.length > 0 ? overviewInstructorIssues.map((item, index) => (
-                      <div key={`${item.instructorName}-${index}`} className={styles.overviewIssueRow}>
+                      <div key={`${item.instructorName}-${index}`} className={styles.overviewIssueRow} style={{ cursor: 'pointer' }} onClick={() => setSelectedInstructorDetail(item.instructorName)}>
                         <div>
-                          <div className={styles.overviewIssueName}>{item.instructorName}</div>
+                          <div className={styles.overviewIssueName} style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{item.instructorName}</div>
                           <div className={styles.overviewIssueMeta}>{item.totalLowClasses} low classes · {item.totalClasses} total</div>
                         </div>
                         <div className={styles.overviewIssueValue}>
@@ -863,9 +945,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                   </div>
                   <div className={styles.overviewIssueList}>
                     {overviewModuleIssues.length > 0 ? overviewModuleIssues.map((item, index) => (
-                      <div key={`${item.moduleName}-${index}`} className={styles.overviewIssueRow}>
+                      <div key={`${item.moduleName}-${index}`} className={styles.overviewIssueRow} style={{ cursor: 'pointer' }} onClick={() => setSelectedModuleDetail(item.moduleName)}>
                         <div>
-                          <div className={styles.overviewIssueName}>{item.moduleName}</div>
+                          <div className={styles.overviewIssueName} style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{item.moduleName}</div>
                           <div className={styles.overviewIssueMeta}>{item.lowClassCount} low classes · {item.totalClasses} total</div>
                         </div>
                         <div className={styles.overviewIssueValue}>
@@ -888,9 +970,9 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                   </div>
                   <div className={styles.overviewIssueList}>
                     {overviewBatchIssues.length > 0 ? overviewBatchIssues.map((item, index) => (
-                      <div key={`${item.batchSet}-${item.name}-${index}`} className={styles.overviewIssueRow}>
+                      <div key={`${item.batchSet}-${item.name}-${index}`} className={styles.overviewIssueRow} style={{ cursor: 'pointer' }} onClick={() => setSelectedBatchDetail(item.name)}>
                         <div>
-                          <div className={styles.overviewIssueName}>{item.name}</div>
+                          <div className={styles.overviewIssueName} style={{ color: 'var(--primary)', textDecoration: 'underline' }}>{item.name}</div>
                           <div className={styles.overviewIssueMeta}>{item.batchSet} · {item.lowCount} low classes</div>
                         </div>
                         <div className={styles.overviewIssueValue}>
@@ -971,8 +1053,13 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                   <tbody>
                     {moduleBreakdown.length > 0 ? (
                       getSortedData(moduleBreakdown).map((m, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: '600' }}>{m.name}</td>
+                        <tr 
+                          key={idx}
+                          onClick={() => setSelectedModuleDetail(m.name)}
+                          className={styles.rowClickable}
+                          title="Click to view details"
+                        >
+                          <td style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'underline' }}>{m.name}</td>
                           <td>
                             <div className={styles.ratingScore}>
                               <span className={m.avgRating >= 4.6 ? styles.ratingHigh : m.avgRating >= 4.2 ? styles.ratingMed : styles.ratingLow}>
@@ -1079,8 +1166,13 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                   <tbody>
                     {batchBreakdown.length > 0 ? (
                       getSortedData(batchBreakdown).map((b, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: '600' }}>{b.name}</td>
+                        <tr 
+                          key={idx}
+                          onClick={() => setSelectedBatchDetail(b.name)}
+                          className={styles.rowClickable}
+                          title="Click to view details"
+                        >
+                          <td style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'underline' }}>{b.name}</td>
                           <td>{b.batchSet}</td>
                           <td>
                             <div className={styles.ratingScore}>
@@ -1215,66 +1307,7 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
             </div>
           )}
 
-          {/* TAB 6: COMMENTS EXPLORER */}
-          {activeTab === 'comments' && (
-            <div className={styles.commentGrid}>
-              {commentsList.length > 0 ? (
-                commentsList.map((c, idx) => (
-                  <div key={idx} className={`${styles.commentCard} card-glass animate-fade`}>
-                    <div className={styles.commentHeader}>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span className={c.rating >= 4.6 ? 'badge badge-success' : c.rating >= 4.2 ? 'badge badge-warning' : 'badge badge-danger'}>
-                          {c.rating.toFixed(2)} ★
-                        </span>
-                        <h4 style={{ fontSize: '0.95rem' }}>{c.topic}</h4>
-                      </div>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                        {c.date}
-                      </span>
-                    </div>
 
-                    <div className={styles.commentDetails}>
-                      <div className={styles.commentMetaItem}>
-                        <span className={styles.commentLabel}>Instructor:</span>
-                        <span>{c.instructor}</span>
-                      </div>
-                      <div className={styles.commentMetaItem}>
-                        <span className={styles.commentLabel}>Module:</span>
-                        <span>{c.module}</span>
-                      </div>
-                      <div className={styles.commentMetaItem}>
-                        <span className={styles.commentLabel}>Batch:</span>
-                        <span>{c.batch} ({c.batchSet})</span>
-                      </div>
-                      <div className={styles.commentMetaItem}>
-                        <span className={styles.commentLabel}>Source:</span>
-                        <span>{c.type} Level ({c.meta})</span>
-                      </div>
-                      {c.reportLink && (
-                        <div className={styles.commentMetaItem}>
-                          <span className={styles.commentLabel}>Report:</span>
-                          <a href={c.reportLink} target="_blank" rel="noreferrer" aria-label="Open report link">
-                            ↗
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className={`${styles.commentBody} ${c.rating <= 3.5 ? styles.commentBodyLow : c.rating < 4.0 ? styles.commentBodyMed : ''}`}>
-                      {c.comment ? `"${c.comment}"` : 'No written feedback text.'}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyTitle}>No Comments Found</div>
-                  <p className={styles.emptyDesc}>
-                    There are no reviews or written feedback matching the selected rating threshold (&le; {ratingThreshold} ★) and search filter.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 7: PATTERNS & INSIGHTS */}
           {activeTab === 'patterns' && (
@@ -1676,6 +1709,162 @@ export function DashboardClient({ data, user }: DashboardClientProps) {
                         <h4 style={{ fontSize: '0.9rem' }}>{c.classTopic}</h4>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {c.sbNames} &bull; {new Date(c.classDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span className={c.classRating >= 4.6 ? 'badge badge-success' : c.classRating >= 4.2 ? 'badge badge-warning' : 'badge badge-danger'}>
+                        {c.classRating.toFixed(2)} ★
+                      </span>
+                    </div>
+                    {c.ratingSplit && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span>Distribution:</span>
+                        <span style={{ fontFamily: 'monospace', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{c.ratingSplit}</span>
+                      </div>
+                    )}
+                    {c.feedback ? (
+                      <div style={{ fontSize: '0.8rem', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid var(--border-color)' }}>
+                        &quot;{c.feedback}&quot;
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No written feedback comments.</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-out details modal overlay for module details */}
+      {selectedModuleDetail && selectedModuleInfo && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedModuleDetail(null)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '4px' }}>{selectedModuleInfo.name}</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Module Performance Overview</p>
+              </div>
+              <button className={styles.closeBtn} onClick={() => setSelectedModuleDetail(null)}>&times;</button>
+            </div>
+
+            {/* Performance Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>AVG RATING</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: selectedModuleInfo.avgRating >= 4.6 ? 'var(--success)' : selectedModuleInfo.avgRating >= 4.2 ? 'var(--warning)' : 'var(--danger)' }}>
+                  {selectedModuleInfo.avgRating.toFixed(2)} ★
+                </div>
+              </div>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>CLASSES</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{selectedModuleInfo.classCount}</div>
+              </div>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>LOW RATED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: selectedModuleInfo.lowCount > 0 ? 'var(--danger)' : 'inherit' }}>
+                  {selectedModuleInfo.lowCount}
+                </div>
+              </div>
+            </div>
+
+            {/* Module Trend Line Chart */}
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px', backgroundColor: 'var(--bg-secondary)' }}>
+              <h4 style={{ fontSize: '0.85rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>Module Rating Trend</h4>
+              <div style={{ height: '140px' }}>
+                <TrendChart data={selectedModuleInfo.trend} height={140} />
+              </div>
+            </div>
+
+            {/* Class-wise Ratings and Comments */}
+            <div>
+              <h3 style={{ fontSize: '1.05rem', marginBottom: '12px' }}>Recent Classes & Feedback</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {selectedModuleInfo.classes.map((c, idx) => (
+                  <div key={idx} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h4 style={{ fontSize: '0.9rem' }}>{c.classTopic}</h4>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Instructor: {c.instructorName} &bull; {c.sbNames} &bull; {new Date(c.classDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span className={c.classRating >= 4.6 ? 'badge badge-success' : c.classRating >= 4.2 ? 'badge badge-warning' : 'badge badge-danger'}>
+                        {c.classRating.toFixed(2)} ★
+                      </span>
+                    </div>
+                    {c.ratingSplit && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span>Distribution:</span>
+                        <span style={{ fontFamily: 'monospace', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>{c.ratingSplit}</span>
+                      </div>
+                    )}
+                    {c.feedback ? (
+                      <div style={{ fontSize: '0.8rem', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid var(--border-color)' }}>
+                        &quot;{c.feedback}&quot;
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No written feedback comments.</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-out details modal overlay for batch details */}
+      {selectedBatchDetail && selectedBatchInfo && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedBatchDetail(null)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '4px' }}>{selectedBatchInfo.name}</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Batch Performance Overview</p>
+              </div>
+              <button className={styles.closeBtn} onClick={() => setSelectedBatchDetail(null)}>&times;</button>
+            </div>
+
+            {/* Performance Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>AVG RATING</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: selectedBatchInfo.avgRating >= 4.6 ? 'var(--success)' : selectedBatchInfo.avgRating >= 4.2 ? 'var(--warning)' : 'var(--danger)' }}>
+                  {selectedBatchInfo.avgRating.toFixed(2)} ★
+                </div>
+              </div>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>CLASSES</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{selectedBatchInfo.classCount}</div>
+              </div>
+              <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>LOW RATED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: selectedBatchInfo.lowCount > 0 ? 'var(--danger)' : 'inherit' }}>
+                  {selectedBatchInfo.lowCount}
+                </div>
+              </div>
+            </div>
+
+            {/* Batch Trend Line Chart */}
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px', backgroundColor: 'var(--bg-secondary)' }}>
+              <h4 style={{ fontSize: '0.85rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>Batch Rating Trend</h4>
+              <div style={{ height: '140px' }}>
+                <TrendChart data={selectedBatchInfo.trend} height={140} />
+              </div>
+            </div>
+
+            {/* Class-wise Ratings and Comments */}
+            <div>
+              <h3 style={{ fontSize: '1.05rem', marginBottom: '12px' }}>Recent Classes & Feedback</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {selectedBatchInfo.classes.map((c, idx) => (
+                  <div key={idx} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h4 style={{ fontSize: '0.9rem' }}>{c.classTopic}</h4>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Instructor: {c.instructorName} &bull; {c.moduleName} &bull; {new Date(c.classDate).toLocaleDateString()}
                         </div>
                       </div>
                       <span className={c.classRating >= 4.6 ? 'badge badge-success' : c.classRating >= 4.2 ? 'badge badge-warning' : 'badge badge-danger'}>
